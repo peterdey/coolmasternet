@@ -50,6 +50,7 @@ function send_control(opts){
 			if( xmlhttp.status==200 ){
 				var response = JSON.parse(xmlhttp.responseText);
 				console.log(response);
+				request_control();
 			}else{
 				console.log("Error: send control request failed");
 			}
