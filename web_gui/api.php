@@ -2,6 +2,8 @@
 require "engine.php";
 require "config.php";
 
+header("Cache-Control: no-cache, must-revalidate");
+
 if($_SERVER["REQUEST_METHOD"] == "POST"){
 	$aRequest = json_decode(file_get_contents('php://input'), true);
    $json_ret = set_array_info("/aircon/set_control_info",$ip,$aRequest);
