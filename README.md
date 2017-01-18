@@ -62,7 +62,7 @@ Uri                | GET | POST | desc
 /common/get_notify  | X | | ?
 /common/set_notify  | | X | ?
 /common/set_regioncode | | X | ?
-/common/set_led | | X | ?
+/common/set_led | | X | Set led's on Wifi Adapter on (1) or off (0)
 /common/reboot | X |  | reboot the AP
 
 ##Parameters
