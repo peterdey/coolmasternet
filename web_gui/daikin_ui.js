@@ -247,8 +247,10 @@ function set_power(boolean){
 	power = document.getElementById("power")
 	if(boolean){
 		power.innerHTML = " ON";				
+		document.getElementById("mode_power").className="btn btn-info";
 	}else{
 		power.innerHTML = " OFF";
+		document.getElementById("mode_power").className="btn btn-default";
 	}
 }
 
