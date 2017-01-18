@@ -22,7 +22,6 @@ This project aims to provide 2 main things:
 ##Tested Hardware
 
 Throughout this document is to be considered valid for the following hardware configuration
-
 ```
 ModelName:          Daikin Emura FTXG-L
 ModelID:            FTXG35LV1BW
@@ -30,7 +29,13 @@ WifiControllerID:   BRP069A41 4P358711-2C
 Software version:   1.4.3
 ```
 
-Please contact me if you try new configurations.
+Also tested as working with
+```
+ModelName:          Daikin Cora Q-Series
+ModelID:            FTXM71QVMA
+WifiControllerID:   BRP072A42 4P384919-1C
+Software version:   2.2.6
+```
 
 ##API System
 
