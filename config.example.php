@@ -1,6 +1,7 @@
 <?php
-	//ip of the airconditioner
-	
-	$ip="192.168.1.11";
+// IP of the CoolMasterNet
+$ip="192.168.1.11";
 
+// Serial Number (MAC Address) of the CoolMasterNet
+$sn="AABBCCDD1122";
 ?>

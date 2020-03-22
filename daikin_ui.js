@@ -1,29 +1,23 @@
 var request_control_loading = 0;
-var request_sensor_loading = 0;
 var timer = 5000; //millisecond
 
 var control_response;
 var control_timeout;
 
-var sensor_response;
-var sensor_timeout;
-
-
 function request_control() {
-	
 	var target="api.php";
 	var request="GET";
-	var parameters="uri=/aircon/get_control_info";
+	var parameters="uri=/v2.0/device/@sn@/ls2&unit=L1_103";
 	
 	var xmlhttp=new XMLHttpRequest();
 	xmlhttp.onreadystatechange  = function () {
 		if ( xmlhttp.readyState == 4 ){
-			request_control_loading=0;
-			if((! request_control_loading) && (! request_sensor_loading)){set_loading(0);}
+			request_control_loading = 0;
+			set_loading(0);
 			if( xmlhttp.status==200 ){
 				var response = JSON.parse(xmlhttp.responseText);
-				control_response=response;
-				control_response_handler(response);
+				control_response=response.data[0];
+				control_response_handler(response.data[0]);
 				control_timeout = setTimeout(request_control, timer);
 			}else{
 				console.log("Error: control ajax request failed");
@@ -49,7 +43,6 @@ function send_control(opts){
 		if ( xmlhttp.readyState == 4 ){
 			if( xmlhttp.status==200 ){
 				var response = JSON.parse(xmlhttp.responseText);
-				console.log(response);
 				request_control();
 			}else{
 				console.log("Error: send control request failed");
@@ -60,41 +53,9 @@ function send_control(opts){
 	}
 	
 	xmlhttp.open(request,target,true);
-	xmlhttp.setRequestHeader("Content-type","application/json");
-	xmlhttp.send(JSON.stringify(opts));
+	xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+	xmlhttp.send(opts);
 		
-}
-
-function request_sensor(){
-	
-	var target="api.php";
-	var request="GET";
-	var parameters="uri=/aircon/get_sensor_info";
-	
-	var xmlhttp=new XMLHttpRequest();
-	xmlhttp.onreadystatechange  = function () {
-		if ( xmlhttp.readyState == 4 ){
-		request_sensor_loading=0;
-			if((! request_control_loading) && (! request_sensor_loading)){set_loading(0);}
-			if( xmlhttp.status==200 ){
-				var response = JSON.parse(xmlhttp.responseText);
-				sensor_response=response;
-				sensor_response_handler(response);
-				sensor_timeout = setTimeout(request_sensor, timer);
-			}else{
-				console.log("Error: sensor ajax request failed");
-				set_alert(1,"<b>Error:</b> sensor ajax request failed");
-			}
-		}else{
-			
-			//alert(xmlhttp.readyState);
-		}
-	}
-	xmlhttp.open(request,target + "?" + parameters ,true);
-	//xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-	xmlhttp.send();
-	request_sensor_loading = 1;
-	set_loading(1);
 }
 
 function control_response_handler(response){
@@ -104,9 +65,9 @@ function control_response_handler(response){
 	
 	//target temp
 	
-	var target_temp =parseInt(response.stemp);
+	var target_temp = parseInt(response.st);
 	
-	if(response.mode === "0" || response.mode === "1"){	
+	if(response.mode === "Auto"){	
 		if(target_temp <= 18){
 			set_target_temp_arrow( 1,true	);		
 			set_target_temp_arrow(-1,false);
@@ -117,7 +78,7 @@ function control_response_handler(response){
 			set_target_temp_arrow( 1,true);
 			set_target_temp_arrow(-1,true	);	
 		}
-	}else if(response.mode === "3"){
+	}else if(response.mode === "Cool" || response.mode === "Dry"){
 		if(target_temp <= 18){
 			set_target_temp_arrow( 1,true	);		
 			set_target_temp_arrow(-1,false);
@@ -128,7 +89,7 @@ function control_response_handler(response){
 			set_target_temp_arrow( 1,true);
 			set_target_temp_arrow(-1,true	);	
 		}
-	}else if(response.mode === "4"){
+	}else if(response.mode === "Heat"){
 		if(target_temp <= 10){
 			set_target_temp_arrow( 1,true	);		
 			set_target_temp_arrow(-1,false);
@@ -139,104 +100,86 @@ function control_response_handler(response){
 			set_target_temp_arrow( 1,true);
 			set_target_temp_arrow(-1,true	);	
 		}
+	}else if(response.mode === "Fan"){
+		set_target_temp_arrow( 1,false);		
+		set_target_temp_arrow(-1,false);
 	}else{
 		set_target_temp_arrow( 1,true);
 		set_target_temp_arrow(-1,true	);
 	}
 	
-	set_target_temp(target_temp);
-	
-	
-	set_power(parseInt(response.pow));
-	set_mode(parseInt(response.mode));
-	var f_mode = response.f_rate;
-	if(f_mode === "A"){
-		f_mode = 1;	
-	}else if(f_mode === "B"){
-		f_mode = 2;
-	}else{
-		f_mode = parseInt(f_mode);
+	if(response.mode === "Fan"){
+		set_target_temp("~");
+	} else {
+		set_target_temp(target_temp);
 	}
-	set_fan(f_mode);
-	set_wing(parseInt(response.f_dir));
-}
-
-function sensor_response_handler(response){
-	set_home_temp(parseInt(response.htemp));
-	set_outside_temp(parseInt(response.otemp));
-}
-
-function minimize_opt(opt){
-	var min_opt = {};
 	
-	for (var x in opt) {
-    	if(x == "pow" 		||
-    		x == "mode" 	||
-    		x == "stemp" 	||
-    		x == "shum" 	||
-    		x == "f_rate" 	||
-    		x == "f_dir"    		
-    	){
-    		min_opt[x] = opt[x];
-    	}
-   }
-   
-   return min_opt;
+	
+	set_power((response.onoff === "ON"));
+	set_mode(response.mode);
+
+	set_fan(response.fspeed);
+	set_home_temp(parseInt(response.rt));
 }
 
 
 //----------ON CLICK FUNCTIONS------------
 
 
-function mode_onclick(num){
+function mode_onclick(mode){
 	if(!control_response) return;
-	var temp = minimize_opt(control_response);
-	temp["mode"] = num;
-	temp["f_rate"] = control_response["dfr"+num];
-	temp["f_dir"] = control_response["dfd"+num];
-	temp["shum"] = "0";
-	if(num == "6"){
-		temp["stemp"] = "0";
-	}else{
-		temp["stemp"] = control_response["dt"+num];
+	var parameters;
+	var command;
+	switch(mode){
+		case "Auto":
+			command = "auto";
+			break;
+		case "Dry":
+			command = "dry";
+			break;
+		case "Cool":
+			command = "cool";
+			break;
+		case "Heat":
+			command = "heat";
+			break;
+		case "Fan":
+			command = "fan";
+			break;
+		default:
+			console.log("mode_onclick() switch: default case reached");
 	}
-	send_control(temp);
+	parameters="uri=/v1.0/device/@sn@/raw&command=" + command + "&unit=L1_103";
+	send_control(parameters);
 	update();
 }
 
 function power_onclick(){
 	if(!control_response) return;
-	var temp = minimize_opt(control_response);
-	temp.pow = ((temp.pow == "0") ? 1 : 0);
-	send_control(temp);
+	var parameters;
+	if (control_response.onoff == "ON") {
+		parameters="uri=/v1.0/device/@sn@/raw&command=off&unit=L1_103";
+	} else {
+		parameters="uri=/v1.0/device/@sn@/raw&command=on&unit=L1_103";
+	}
+	send_control(parameters);
 	update();
 }
 
 function fan_onclick(level){
 	if(!control_response) return;
-	var temp = minimize_opt(control_response);
-	temp.f_rate = level;
-	send_control(temp);
-	update();
-}
-
-function wing_onclick(num){
-	if(!control_response) return;
-	var temp = minimize_opt(control_response);
-	if(num == control_response.f_dir){
-		temp.f_dir = 0;
-	}else{
-		temp.f_dir = num;
-	}
-	send_control(temp);
+	var parameters;
+	parameters="uri=/v1.0/device/@sn@/raw&command=fspeed&unit=L1_103&value=" + level;
+	send_control(parameters);
 	update();
 }
 
 function temp_onclick(inc){
 	if(!control_response) return;
-	var temp = minimize_opt(control_response);
-	temp.stemp = (parseInt(control_response.stemp) + inc).toString();
-	send_control(temp);
+	var temp = (parseFloat(control_response.st) + inc).toString();
+	var parameters;
+	parameters="uri=/v1.0/device/@sn@/raw&command=temp&unit=L1_103&value=" + temp;
+	send_control(parameters);
 	update();
 }
 
@@ -263,27 +206,20 @@ function reset_mode(){
 }
 
 function set_mode(mode){
-	if(mode === 1 || mode === 7) mode = 0;
-	
-	//0-1-7 auto
-	//2 dehum
-	//3 cooling
-	//4 heating
-	//6 fan
 	switch(mode){
-		case 0:
+		case "Auto":
 			document.getElementById("mode_auto").className="btn btn-info mode-btn";
 			break;
-		case 2:
+		case "Dry":
 			document.getElementById("mode_dehum").className="btn btn-info mode-btn";
 			break;
-		case 3:
+		case "Cool":
 			document.getElementById("mode_cooling").className="btn btn-info mode-btn";
 			break;
-		case 4:
+		case "Heat":
 			document.getElementById("mode_heating").className="btn btn-info mode-btn";
 			break;
-		case 6:
+		case "Fan":
 			document.getElementById("mode_fan").className="btn btn-info mode-btn";
 			break;
 		default:
@@ -292,19 +228,19 @@ function set_mode(mode){
 }
 
 function set_home_temp(temp){
-	document.getElementById("home_temp").innerHTML=" "+temp+" C";	
+	document.getElementById("home_temp").innerHTML=" "+temp+"°C";	
 }
 
 function set_outside_temp(temp){
-	document.getElementById("outside_temp").innerHTML=" "+temp+" C";
+	document.getElementById("outside_temp").innerHTML=" "+temp+"°C";
 }
 
 function set_target_temp(temp){
 	if(isNaN(temp)){
-		show_target_temp(0);
-		document.getElementById("target_temp").innerHTML=" ~ ";
+		show_target_temp(1);
+		document.getElementById("target_temp").innerHTML="&nbsp;&nbsp;&nbsp;~&nbsp;&nbsp;&nbsp;";
 	}else{
-		document.getElementById("target_temp").innerHTML=" "+temp+" C";
+		document.getElementById("target_temp").innerHTML=" "+temp+"°C";
 		show_target_temp(1);
 	}
 }
@@ -333,26 +269,17 @@ function set_target_temp_arrow(inc,boolean){
 
 function set_fan(f_mode){				
 	switch(f_mode){
-		case 1:
+		case "Auto":
 			document.getElementById("fan_auto").className="btn btn-info fan-btn";
 			break;
-		case 2:
-			document.getElementById("fan_eco").className="btn btn-info fan-btn";
-			break;
-		case 3:
+		case "Low":
 			set_fan_img(1);
 			break;
-		case 4:
+		case "Med":
 			set_fan_img(2);
 			break;
-		case 5:
+		case "High":
 			set_fan_img(3);
-			break;
-		case 6:
-			set_fan_img(4);
-			break;
-		case 7:
-			set_fan_img(5);
 			break;
 		
 		default:
@@ -362,7 +289,7 @@ function set_fan(f_mode){
 
 function set_fan_img(num){
 	var temp;
-	for(var i=1; i<6; ++i){
+	for(var i=1; i<4; ++i){
 		temp = document.getElementById("fan_lvl_" + i.toString());
 		if(i <= num){
 			temp.src="media/level_"+i.toString()+"_on.svg";
@@ -440,11 +367,8 @@ function set_alert(boolean,mex){
 
 function update(){
 	clearTimeout(control_timeout);
-	clearTimeout(sensor_timeout);
 	if( ! request_control_loading )
 		request_control();
-	if( ! request_sensor_loading )
-		request_sensor();
 }
 
 update();
